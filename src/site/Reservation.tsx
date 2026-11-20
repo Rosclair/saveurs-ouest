@@ -54,14 +54,16 @@ export function Reservation({ r, plats, panier, changer, vider }: Props) {
     const res = data as { reference: string; plats: LigneReservation[]; total: number }
     const quand = date === auj ? `aujourd'hui (${dateLongue(date)})` : dateLongue(date)
     const msg = [
-      `${r.tag_whatsapp} RÉSERVATION ${res.reference} – ${r.nom}`,
+      `${r.tag_whatsapp} | RÉSERVATION | ${res.reference}`,
+      `Restaurant : ${r.nom}`,
       ``,
-      `📅 ${quand[0].toUpperCase() + quand.slice(1)} à ${hFr(heure)}`,
-      `👥 ${personnes} personne${personnes > 1 ? 's' : ''}`,
-      ...(res.plats.length ? [``, `🍽️ Pré-commande :`, ...res.plats.map(l => `• ${l.quantite}× ${l.nom} (${fcfa(l.prix)})`), `Total pré-commande : ${fcfa(res.total)}`] : [``, `Table seulement (sans pré-commande)`]),
-      ``,
+      `Date : ${quand} à ${hFr(heure)}`,
+      `Personnes : ${personnes}`,
+      ...(res.plats.length
+        ? [`Pré-commande :`, ...res.plats.map(l => `- ${l.quantite} x ${l.nom} (${fcfa(l.prix)})`), `Total pré-commande : ${fcfa(res.total)}`]
+        : [`Pré-commande : aucune (table seulement)`]),
       `Nom : ${nom.trim()}`,
-      `Tél : ${tel.trim()}`,
+      `Téléphone : ${tel.trim()}`,
       ...(note.trim() ? [`Note : ${note.trim()}`] : []),
       ``,
       `Merci de confirmer ma réservation.`,

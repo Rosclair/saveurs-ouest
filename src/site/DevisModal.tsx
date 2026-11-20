@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Restaurant, Service } from '../lib/types'
-import { dateLongue, lienWhatsApp } from '../lib/utils'
+import { codeCourt, dateLongue, lienWhatsApp } from '../lib/utils'
 import { IconeWhatsApp } from './ui'
 
 export function DevisModal({ r, service, services, onFermer }: { r: Restaurant; service: Service; services: Service[]; onFermer: () => void }) {
@@ -20,16 +20,17 @@ export function DevisModal({ r, service, services, onFermer }: { r: Restaurant; 
   function envoyer(e: React.FormEvent) {
     e.preventDefault()
     const msg = [
-      `${r.tag_whatsapp} DEVIS – ${r.nom}`,
+      `${r.tag_whatsapp} | DEVIS | ${codeCourt('D')}`,
+      `Restaurant : ${r.nom}`,
       ``,
-      `Service : ${type}`,
-      date ? `Date : ${dateLongue(date)}` : `Date : à préciser`,
-      invites ? `Nombre d'invités : ${invites}` : '',
-      details ? `Détails : ${details}` : '',
+      `Prestation : ${type}`,
+      `Date : ${date ? dateLongue(date) : 'à préciser'}`,
+      `Invités : ${invites || 'à préciser'}`,
+      ...(details ? [`Détails : ${details}`] : []),
       `Nom : ${nom}`,
       ``,
       `Merci de m'envoyer un devis.`,
-    ].filter(l => l !== '').join('\n').replace('\n\n\n', '\n\n')
+    ].join('\n')
     window.location.href = lienWhatsApp(r.whatsapp, msg)
   }
 

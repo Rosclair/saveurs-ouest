@@ -68,3 +68,15 @@ export function creneaux(horaires: Horaires, dateIso: string): string[] {
 export const lienWhatsApp = (numero: string, texte: string) => `https://wa.me/${numero.replace(/\D/g, '')}?text=${encodeURIComponent(texte)}`
 
 export const miniature = (url: string | null) => url && url.startsWith('/photos/') ? url.replace('.webp', '-mini.webp') : url
+
+/** Petit code lisible pour tracer un message (sans 0/O, 1/I) */
+export function codeCourt(prefixe: string) {
+  const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let s = ''
+  for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)]
+  return `${prefixe}-${s}`
+}
+
+/** Message WhatsApp « question » : même format d'en-tête que les autres messages du site */
+export const messageQuestion = (tag: string, nom: string) =>
+  `${tag} | QUESTION | ${codeCourt('Q')}\nRestaurant : ${nom}\n\nBonjour, j'ai une question : `

@@ -4,7 +4,7 @@ import { usePanier } from '../lib/panier'
 import { useReveal } from '../lib/reveal'
 import type { Plat, Restaurant, Service } from '../lib/types'
 import { CATEGORIES } from '../lib/types'
-import { dateLongue, fcfa, hFr, JOURS, lienWhatsApp, maintenantDouala, miniature, statutOuverture } from '../lib/utils'
+import { dateLongue, fcfa, hFr, JOURS, lienWhatsApp, maintenantDouala, messageQuestion, miniature, statutOuverture } from '../lib/utils'
 import { Icone, IconeWhatsApp, Logo, Stepper, Surtitre } from './ui'
 import { Reservation } from './Reservation'
 import { DevisModal } from './DevisModal'
@@ -384,7 +384,7 @@ function Infos({ r }: { r: Restaurant }) {
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
             {r.maps_url && <a href={r.maps_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-ocre px-6 py-3 font-semibold text-cafe transition hover:bg-[#e6b354]"><Icone nom="pin" /> Itinéraire</a>}
-            <a href={lienWhatsApp(r.whatsapp, `${r.tag_whatsapp} Bonjour ${r.nom}, j'ai une question.`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full px-6 py-3 font-semibold ring-1 ring-creme/30 transition hover:bg-white/10"><IconeWhatsApp /> Nous écrire</a>
+            <a href={lienWhatsApp(r.whatsapp, messageQuestion(r.tag_whatsapp, r.nom))} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full px-6 py-3 font-semibold ring-1 ring-creme/30 transition hover:bg-white/10"><IconeWhatsApp /> Nous écrire</a>
           </div>
           {r.paiement.length > 0 && (
             <div className="mt-10 border-t border-white/10 pt-6">
@@ -433,7 +433,7 @@ function BarreMobile({ r, nbArticles }: { r: Restaurant; nbArticles: number }) {
         <Icone nom="calendrier" className="h-5 w-5" />Réserver
         {nbArticles > 0 && <span key={nbArticles} className="pop absolute right-[22%] top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-ocre px-1 text-[10px] text-cafe">{nbArticles}</span>}
       </a>
-      <a href={lienWhatsApp(r.whatsapp, `${r.tag_whatsapp} Bonjour ${r.nom}, j'ai une question.`)} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1 py-3"><IconeWhatsApp className="h-5 w-5 text-[#4ade80]" />WhatsApp</a>
+      <a href={lienWhatsApp(r.whatsapp, messageQuestion(r.tag_whatsapp, r.nom))} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1 py-3"><IconeWhatsApp className="h-5 w-5 text-[#4ade80]" />WhatsApp</a>
     </nav>
   )
 }
