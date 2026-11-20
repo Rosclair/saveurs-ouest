@@ -16,6 +16,27 @@ export default function Site() {
   const [devis, setDevis] = useState<Service | null>(null)
   useReveal(data)
 
+  // Liens directs : #menu-du-jour, #reserver… défilent vers la section une fois les données chargées ;
+  // #devis, #devis-mariage, #devis-entreprise, #devis-livraison ouvrent directement le formulaire de devis.
+  useEffect(() => {
+    if (!data) return
+    const appliquer = () => {
+      const h = decodeURIComponent(window.location.hash.slice(1)).toLowerCase()
+      if (!h) return
+      if (h.startsWith('devis')) {
+        const cle = h.replace(/^devis-?/, '')
+        const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        const s = cle ? data.services.find(x => norm(x.titre).includes(cle)) : data.services[0]
+        if (s) { document.getElementById('services')?.scrollIntoView(); setDevis(s) }
+        return
+      }
+      setTimeout(() => document.getElementById(h)?.scrollIntoView({ behavior: 'smooth' }), 150)
+    }
+    appliquer()
+    window.addEventListener('hashchange', appliquer)
+    return () => window.removeEventListener('hashchange', appliquer)
+  }, [data])
+
   useEffect(() => {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 2600)
