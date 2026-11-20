@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --color-creme: #f7efe2;
+  --color-creme-2: #efe3cf;
+  --color-papier: #fbf7f0;
+  --color-cafe: #21150d;
+  --color-cafe-2: #3a2617;
+  --color-ocre: #d9a441;
+  --color-ocre-fonce: #a8741b;
+  --color-terre: #b4482a;
+  --color-terre-fonce: #8f3519;
+  --color-feuille: #3f6b3a;
+  --color-encre: #2b1d13;
+  --color-gris: #6f5f52;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+body { background: var(--color-papier); color: var(--color-encre); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+.ndop {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23d9a441' stroke-width='1.2'%3E%3Cpath d='M28 4 L40 16 L28 28 L16 16 Z'/%3E%3Cpath d='M28 28 L40 40 L28 52 L16 40 Z'/%3E%3Ccircle cx='4' cy='28' r='2.5'/%3E%3Ccircle cx='52' cy='28' r='2.5'/%3E%3Cpath d='M0 0 L8 8 M56 0 L48 8 M0 56 L8 48 M56 56 L48 48'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+.reveal.is-in { opacity: 1; transform: none; }
+
+@keyframes flotte { 0%,100% { transform: translateY(0) rotate(var(--r,0deg)); } 50% { transform: translateY(-10px) rotate(var(--r,0deg)); } }
+.flotte { animation: flotte 7s ease-in-out infinite; }
+@keyframes defile { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.defile { animation: defile 38s linear infinite; }
+@keyframes pulse-dot { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.7);} 70% { box-shadow: 0 0 0 10px rgba(74,222,128,0);} 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0);} }
+.pulse-dot { animation: pulse-dot 2s infinite; }
+@keyframes pop { 0% { transform: scale(1);} 40% { transform: scale(1.25);} 100% { transform: scale(1);} }
+.pop { animation: pop .35s ease; }
+
+.pointilles { flex: 1; border-bottom: 1.5px dotted color-mix(in srgb, var(--color-encre) 30%, transparent); margin: 0 .6rem .35rem; min-width: 1rem; }
+.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .flotte, .defile, .pulse-dot, .pop { animation: none; }
+  html { scroll-behavior: auto; }
+}
