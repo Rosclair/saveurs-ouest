@@ -8,6 +8,7 @@ import { dateLongue, fcfa, hFr, JOURS, lienWhatsApp, maintenantDouala, messageQu
 import { Icone, IconeWhatsApp, Logo, Stepper, Surtitre } from './ui'
 import { Reservation } from './Reservation'
 import { DevisModal } from './DevisModal'
+import { InstallPWA } from './InstallPWA'
 
 export default function Site() {
   const { data, erreur } = useRestaurant()
@@ -66,8 +67,9 @@ export default function Site() {
       <Infos r={r} />
       <PiedDePage r={r} />
       <BarreMobile r={r} nbArticles={nbArticles} />
+      <InstallPWA />
       {devis && <DevisModal r={r} service={devis} services={services} onFermer={() => setDevis(null)} />}
-      <div aria-live="polite" className={`fixed inset-x-0 bottom-24 z-50 flex justify-center px-4 transition-all duration-300 md:bottom-8 ${toast ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0'}`}>
+      <div aria-live="polite" className={`fixed inset-x-0 top-20 z-50 flex justify-center px-4 transition-all duration-300 md:top-auto md:bottom-8 ${toast ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-4 opacity-0'}`}>
         <a href="#reserver" className="flex items-center gap-3 rounded-full bg-cafe px-5 py-3 text-sm text-creme shadow-2xl shadow-cafe/40">
           <span className="grid h-6 w-6 place-items-center rounded-full bg-feuille"><Icone nom="check" className="h-4 w-4" /></span>
           {toast}

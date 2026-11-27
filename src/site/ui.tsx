@@ -6,7 +6,7 @@ export function Logo({ clair = false }: { clair?: boolean }) {
       <svg viewBox="0 0 64 64" className="h-9 w-9 shrink-0" aria-hidden="true">
         <circle cx="32" cy="32" r="31" fill={clair ? '#f7efe2' : '#21150d'} />
         <circle cx="32" cy="32" r="26" fill="none" stroke="#d9a441" strokeWidth="1.5" />
-        <text x="32" y="41.5" textAnchor="middle" fontFamily="Fraunces, Georgia, serif" fontSize="27" fontStyle="italic" fill={clair ? '#21150d' : '#f7efe2'}>S</text>
+        <text x="32" y="37.5" textAnchor="middle" fontFamily="Fraunces, Georgia, serif" fontSize="14" fontStyle="italic" fill={clair ? '#21150d' : '#f7efe2'}>logo</text>
       </svg>
       <span className="leading-none">
         <span className={`block font-display text-[1.15rem] font-semibold tracking-tight ${clair ? 'text-creme' : 'text-cafe'}`}>Saveurs de l'Ouest</span>

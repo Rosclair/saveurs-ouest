@@ -11,3 +11,7 @@ createRoot(document.getElementById('root')!).render(
     {estAdmin ? <Suspense fallback={<div className="min-h-screen bg-cafe" />}><Admin /></Suspense> : <Site />}
   </StrictMode>,
 )
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}) })
+}
