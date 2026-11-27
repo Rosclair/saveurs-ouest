@@ -67,8 +67,8 @@ export function reservationsExemple(resto: Restaurant, plats: Plat[]): Reservati
   const total = (l: { prix: number; quantite: number }[]) => l.reduce((s, x) => s + x.prix * x.quantite, 0)
   const base = { restaurant_id: resto.id, telephone: '', note: null, created_at: new Date().toISOString() }
   return [
-    { ...base, id: 'exemple-1', reference: 'R-0001', nom: 'Mireille K.', date: auj, heure: '12:30', personnes: 4, plats: l1, total: total(l1), statut: 'payee' },
-    { ...base, id: 'exemple-2', reference: 'R-0002', nom: 'Paul T.', date: auj, heure: '19:00', personnes: 6, plats: l2, total: total(l2), statut: 'confirmee' },
+    { ...base, id: 'exemple-1', reference: 'R-0001', nom: 'Mireille K.', date: auj, heure: '19:30', personnes: 4, plats: l1, total: total(l1), statut: 'payee' },
+    { ...base, id: 'exemple-2', reference: 'R-0002', nom: 'Paul T.', date: auj, heure: '20:00', personnes: 6, plats: l2, total: total(l2), statut: 'confirmee' },
     { ...base, id: 'exemple-3', reference: 'R-0003', nom: 'Aïcha N.', date: ajouterJours(auj, 1), heure: '13:00', personnes: 2, plats: [], total: 0, statut: 'demandee' },
   ]
 }
