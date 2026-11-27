@@ -3,6 +3,7 @@ import { supabase, RESTAURANT_SLUG } from '../lib/supabase'
 import type { LigneReservation, Plat, Restaurant } from '../lib/types'
 import { ajouterJours, creneaux, dateLongue, fcfa, hFr, lienWhatsApp, maintenantDouala, miniature } from '../lib/utils'
 import { Icone, IconeWhatsApp, Stepper, Surtitre } from './ui'
+import { enregistrerMaReservation, lireEtatDemo } from '../lib/demo'
 
 const ERREURS: Record<string, string> = {
   PLAT_INDISPONIBLE: 'Un des plats choisis n\'est plus disponible. Retirez-le puis réessayez.',
@@ -41,17 +42,25 @@ export function Reservation({ r, plats, panier, changer, vider }: Props) {
     if (nom.trim().length < 2) { setErreur(ERREURS.NOM_INVALIDE); return }
     if (!/^[0-9 +]{8,20}$/.test(tel.trim())) { setErreur(ERREURS.TELEPHONE_INVALIDE); return }
     setEnvoi(true)
-    const { data, error } = await supabase.rpc('resto_creer_reservation', {
-      p_slug: RESTAURANT_SLUG, p_nom: nom.trim(), p_telephone: tel.trim(), p_date: date, p_heure: heure,
-      p_personnes: personnes, p_plats: lignes.map(l => ({ plat_id: l.p.id, quantite: l.q })), p_note: note.trim() || null,
-    })
-    setEnvoi(false)
-    if (error || !data) {
-      const code = Object.keys(ERREURS).find(k => error?.message?.includes(k))
-      setErreur(code ? ERREURS[code] : 'La connexion a échoué. Vérifiez votre réseau et réessayez.')
-      return
+    let res: { reference: string; plats: LigneReservation[]; total: number }
+    if (lireEtatDemo()) {
+      // Démo : le menu affiché vient des changements faits dans l'espace gérant de ce téléphone
+      const l = lignes.map(x => ({ plat_id: x.p.id, nom: x.p.nom, prix: x.p.prix, quantite: x.q }))
+      res = { reference: `R-${1000 + Math.floor(Math.random() * 9000)}`, plats: l, total: l.reduce((t, x) => t + x.prix * x.quantite, 0) }
+      setEnvoi(false)
+    } else {
+      const { data, error } = await supabase.rpc('resto_creer_reservation', {
+        p_slug: RESTAURANT_SLUG, p_nom: nom.trim(), p_telephone: tel.trim(), p_date: date, p_heure: heure,
+        p_personnes: personnes, p_plats: lignes.map(l => ({ plat_id: l.p.id, quantite: l.q })), p_note: note.trim() || null,
+      })
+      setEnvoi(false)
+      if (error || !data) {
+        const code = Object.keys(ERREURS).find(k => error?.message?.includes(k))
+        setErreur(code ? ERREURS[code] : 'La connexion a échoué. Vérifiez votre réseau et réessayez.')
+        return
+      }
+      res = data as { reference: string; plats: LigneReservation[]; total: number }
     }
-    const res = data as { reference: string; plats: LigneReservation[]; total: number }
     const quand = date === auj ? `aujourd'hui (${dateLongue(date)})` : dateLongue(date)
     const msg = [
       `${r.tag_whatsapp} | RÉSERVATION | ${res.reference}`,
@@ -69,6 +78,11 @@ export function Reservation({ r, plats, panier, changer, vider }: Props) {
       `Merci de confirmer ma réservation.`,
     ].join('\n')
     const url = lienWhatsApp(r.whatsapp, msg)
+    enregistrerMaReservation({
+      id: crypto.randomUUID(), restaurant_id: r.id, reference: res.reference, nom: nom.trim(), telephone: tel.trim(),
+      date, heure, personnes, plats: res.plats, total: res.total, note: note.trim() || null, statut: 'demandee',
+      created_at: new Date().toISOString(),
+    })
     setSucces({ ref: res.reference, url })
     vider()
     window.location.href = url

@@ -1,29 +1,49 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { Plat, Reservation, Restaurant } from '../lib/types'
+import type { Plat, Reservation } from '../lib/types'
 import { CATEGORIES } from '../lib/types'
 import { dateLongue, fcfa, hFr, lienWhatsApp, maintenantDouala, miniature } from '../lib/utils'
+import { depotDemo, depotSupabase, type Depot, type Filtre } from '../lib/depot'
+import { estIdentifiantDemo, sessionDemo } from '../lib/demo'
 import { Icone, IconeWhatsApp, Logo } from '../site/ui'
 
 export default function Admin() {
-  const [session, setSession] = useState<Session | null | undefined>(undefined)
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => data.subscription.unsubscribe()
+  // undefined : chargement · null : écran de connexion · Depot : espace gérant
+  const [depot, setDepot] = useState<Depot | null | undefined>(undefined)
+  const [erreur, setErreur] = useState('')
+
+  const ouvrirDemo = useCallback(async () => {
+    try { setDepot(await depotDemo()) } catch { setErreur('Connexion impossible. Vérifiez votre réseau.'); setDepot(null) }
   }, [])
-  if (session === undefined) return <div className="grid min-h-screen place-items-center bg-cafe text-creme">Chargement…</div>
-  return session ? <Espace session={session} /> : <Connexion />
+
+  useEffect(() => {
+    if (sessionDemo.ouverte()) { ouvrirDemo(); return }
+    const charger = async (userId: string | null) => {
+      if (!userId) { setDepot(null); return }
+      const { data: lien } = await supabase.from('resto_admins').select('restaurant_id').eq('user_id', userId).limit(1).maybeSingle()
+      if (!lien) { setErreur('Ce compte n\'est relié à aucun restaurant.'); setDepot(null); await supabase.auth.signOut(); return }
+      try { setDepot(await depotSupabase(lien.restaurant_id)) } catch { setErreur('Connexion impossible. Vérifiez votre réseau.'); setDepot(null) }
+    }
+    const { data } = supabase.auth.onAuthStateChange((ev, s) => {
+      if (ev === 'INITIAL_SESSION' || ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') setTimeout(() => charger(s?.user.id ?? null), 0)
+    })
+    return () => data.subscription.unsubscribe()
+  }, [ouvrirDemo])
+
+  if (depot === undefined) return <div className="grid min-h-screen place-items-center bg-cafe text-creme">Chargement…</div>
+  if (!depot) return <Connexion erreurInitiale={erreur} onDemo={() => { setErreur(''); ouvrirDemo() }} />
+  return <Espace depot={depot} onDeconnexion={async () => { await depot.deconnexion(); setDepot(null) }} />
 }
 
-function Connexion() {
+function Connexion({ erreurInitiale, onDemo }: { erreurInitiale: string; onDemo: () => void }) {
   const [email, setEmail] = useState('')
   const [mdp, setMdp] = useState('')
-  const [erreur, setErreur] = useState('')
+  const [erreur, setErreur] = useState(erreurInitiale)
   const [envoi, setEnvoi] = useState(false)
   async function go(e: React.FormEvent) {
-    e.preventDefault(); setEnvoi(true); setErreur('')
+    e.preventDefault(); setErreur('')
+    if (estIdentifiantDemo(email, mdp)) { sessionDemo.ouvrir(); onDemo(); return }
+    setEnvoi(true)
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: mdp })
     setEnvoi(false)
     if (error) setErreur('Identifiants incorrects.')
@@ -37,7 +57,7 @@ function Connexion() {
         <h1 className="mt-8 font-display text-3xl text-cafe">Espace gérant</h1>
         <p className="mt-1 text-sm text-gris">Gérez votre menu du jour et vos réservations.</p>
         <div className="mt-6 space-y-4">
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="E-mail" autoComplete="username" required className={champ} />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="E-mail" autoComplete="username" autoCapitalize="none" required className={champ} />
           <input type="password" value={mdp} onChange={e => setMdp(e.target.value)} placeholder="Mot de passe" autoComplete="current-password" required className={champ} />
         </div>
         {erreur && <p role="alert" className="mt-4 text-sm text-terre">{erreur}</p>}
@@ -50,44 +70,35 @@ function Connexion() {
 
 type Onglet = 'jour' | 'reservations' | 'plats'
 
-function Espace({ session }: { session: Session }) {
-  const [resto, setResto] = useState<Restaurant | null>(null)
-  const [refuse, setRefuse] = useState(false)
+function Espace({ depot, onDeconnexion }: { depot: Depot; onDeconnexion: () => void }) {
   const [onglet, setOnglet] = useState<Onglet>('jour')
   const [plats, setPlats] = useState<Plat[]>([])
+  const [version, setVersion] = useState(0)
 
-  useEffect(() => {
-    (async () => {
-      const { data: lien } = await supabase.from('resto_admins').select('restaurant_id').eq('user_id', session.user.id).limit(1).maybeSingle()
-      if (!lien) { setRefuse(true); return }
-      const { data } = await supabase.from('resto_restaurants').select('*').eq('id', lien.restaurant_id).single()
-      setResto(data as Restaurant)
-    })()
-  }, [session.user.id])
+  const chargerPlats = useCallback(async () => { setPlats(await depot.plats()) }, [depot])
+  useEffect(() => { chargerPlats() }, [chargerPlats, version])
 
-  const chargerPlats = useCallback(async () => {
-    if (!resto) return
-    const { data } = await supabase.from('resto_plats').select('*').eq('restaurant_id', resto.id).order('ordre')
-    setPlats((data ?? []) as Plat[])
-  }, [resto])
-  useEffect(() => { chargerPlats() }, [chargerPlats])
-
-  if (refuse) return (
-    <div className="grid min-h-screen place-items-center bg-cafe p-6 text-center text-creme">
-      <div><p>Ce compte n'est relié à aucun restaurant.</p><button onClick={() => supabase.auth.signOut()} className="mt-4 text-ocre underline">Se déconnecter</button></div>
-    </div>
-  )
-  if (!resto) return <div className="grid min-h-screen place-items-center bg-cafe text-creme">Chargement…</div>
+  async function reinitialiser() {
+    if (!depot.reinitialiser || !confirm('Revenir à la démo de départ ? Vos changements seront effacés.')) return
+    await depot.reinitialiser()
+    setVersion(v => v + 1)
+  }
 
   const onglets: { id: Onglet; t: string }[] = [{ id: 'jour', t: 'Menu du jour' }, { id: 'reservations', t: 'Réservations' }, { id: 'plats', t: 'Mes plats' }]
   return (
     <div className="min-h-screen bg-papier pb-16">
+      {depot.demo && (
+        <div data-demo-bandeau className="bg-ocre px-4 py-2 text-center text-[13px] font-medium text-cafe">
+          Mode démo : vos changements restent sur ce téléphone et s'affichent sur le site.{' '}
+          <button onClick={reinitialiser} className="font-bold underline underline-offset-2">Réinitialiser</button>
+        </div>
+      )}
       <header className="sticky top-0 z-30 bg-cafe text-creme shadow-lg">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-4">
           <Logo clair />
           <div className="flex items-center gap-4 text-sm">
             <a href="/" target="_blank" className="hidden text-creme/70 hover:text-ocre sm:inline">Voir le site ↗</a>
-            <button onClick={() => supabase.auth.signOut()} className="rounded-full px-3 py-1.5 ring-1 ring-white/20 hover:bg-white/10">Déconnexion</button>
+            <button onClick={onDeconnexion} className="rounded-full px-3 py-1.5 ring-1 ring-white/20 hover:bg-white/10">Déconnexion</button>
           </div>
         </div>
         <nav className="mx-auto flex max-w-4xl gap-1 px-3">
@@ -97,9 +108,9 @@ function Espace({ session }: { session: Session }) {
         </nav>
       </header>
       <main className="mx-auto max-w-4xl px-5 pt-8">
-        {onglet === 'jour' && <MenuJour plats={plats} recharger={chargerPlats} />}
-        {onglet === 'reservations' && <Reservations resto={resto} />}
-        {onglet === 'plats' && <GestionPlats resto={resto} plats={plats} recharger={chargerPlats} />}
+        {onglet === 'jour' && <MenuJour key={version} depot={depot} plats={plats} recharger={chargerPlats} />}
+        {onglet === 'reservations' && <Reservations key={version} depot={depot} />}
+        {onglet === 'plats' && <GestionPlats depot={depot} plats={plats} recharger={chargerPlats} />}
       </main>
     </div>
   )
@@ -114,7 +125,7 @@ function Interrupteur({ actif, onClick, label }: { actif: boolean; onClick: () =
   )
 }
 
-function MenuJour({ plats, recharger }: { plats: Plat[]; recharger: () => void }) {
+function MenuJour({ depot, plats, recharger }: { depot: Depot; plats: Plat[]; recharger: () => void }) {
   const [maj, setMaj] = useState<Record<string, Partial<Plat>>>({})
   const vue = plats.filter(p => p.actif).map(p => ({ ...p, ...maj[p.id] }))
   const nb = vue.filter(p => p.du_jour).length
@@ -122,7 +133,7 @@ function MenuJour({ plats, recharger }: { plats: Plat[]; recharger: () => void }
   async function basculer(p: Plat) {
     const val = !p.du_jour
     setMaj(m => ({ ...m, [p.id]: { ...m[p.id], du_jour: val, ...(val ? {} : { plat_du_chef: false }) } }))
-    await supabase.from('resto_plats').update({ du_jour: val, ...(val ? {} : { plat_du_chef: false }) }).eq('id', p.id)
+    await depot.majPlats([p.id], { du_jour: val, ...(val ? {} : { plat_du_chef: false }) })
   }
   async function chef(p: Plat) {
     const ids = plats.filter(x => x.plat_du_chef && x.id !== p.id).map(x => x.id)
@@ -130,14 +141,14 @@ function MenuJour({ plats, recharger }: { plats: Plat[]; recharger: () => void }
     ids.forEach(id => { n[id] = { plat_du_chef: false } })
     n[p.id] = { plat_du_chef: true, du_jour: true }
     setMaj(m => ({ ...m, ...n }))
-    if (ids.length) await supabase.from('resto_plats').update({ plat_du_chef: false }).in('id', ids)
-    await supabase.from('resto_plats').update({ plat_du_chef: true, du_jour: true }).eq('id', p.id)
+    await depot.majPlats(ids, { plat_du_chef: false })
+    await depot.majPlats([p.id], { plat_du_chef: true, du_jour: true })
   }
   async function toutDecocher() {
     const n: Record<string, Partial<Plat>> = {}
     plats.forEach(p => { n[p.id] = { du_jour: false, plat_du_chef: false } })
     setMaj(n)
-    await supabase.from('resto_plats').update({ du_jour: false, plat_du_chef: false }).eq('restaurant_id', plats[0]?.restaurant_id ?? '')
+    await depot.majPlats(plats.map(p => p.id), { du_jour: false, plat_du_chef: false })
     recharger()
   }
 
@@ -180,20 +191,18 @@ const STATUTS: Record<Reservation['statut'], { t: string; c: string }> = {
   annulee: { t: 'Annulée', c: 'bg-terre/15 text-terre' },
 }
 
-function Reservations({ resto }: { resto: Restaurant }) {
+function Reservations({ depot }: { depot: Depot }) {
+  const resto = depot.resto
   const [liste, setListe] = useState<Reservation[] | null>(null)
-  const [filtre, setFiltre] = useState<'avenir' | 'toutes'>('avenir')
+  const [filtre, setFiltre] = useState<Filtre>('avenir')
   const charger = useCallback(async () => {
-    let q = supabase.from('resto_reservations').select('*').eq('restaurant_id', resto.id).order('date').order('heure')
-    if (filtre === 'avenir') q = q.gte('date', maintenantDouala().iso).not('statut', 'in', '(annulee,terminee)')
-    const { data } = await q.limit(200)
-    setListe((data ?? []) as Reservation[])
-  }, [resto.id, filtre])
+    setListe(await depot.reservations(filtre))
+  }, [depot, filtre])
   useEffect(() => { charger() }, [charger])
 
   async function statut(r: Reservation, s: Reservation['statut']) {
     setListe(l => l?.map(x => x.id === r.id ? { ...x, statut: s } : x) ?? null)
-    await supabase.from('resto_reservations').update({ statut: s }).eq('id', r.id)
+    await depot.statut(r.id, s)
   }
 
   const telWa = (t: string) => { const d = t.replace(/\D/g, ''); return d.length === 9 ? '237' + d : d }
@@ -226,7 +235,7 @@ function Reservations({ resto }: { resto: Restaurant }) {
             )}
             {r.note && <p className="mt-3 text-sm italic text-gris">« {r.note} »</p>}
             <div className="mt-4 flex flex-wrap gap-2">
-              <a href={lienWhatsApp(telWa(r.telephone), `Bonjour ${r.nom}, concernant votre réservation ${r.reference} chez ${resto.nom} : `)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-cafe"><IconeWhatsApp className="h-4 w-4" /> Écrire</a>
+              {r.telephone && <a href={lienWhatsApp(telWa(r.telephone), `Bonjour ${r.nom}, concernant votre réservation ${r.reference} chez ${resto.nom} : `)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-cafe"><IconeWhatsApp className="h-4 w-4" /> Écrire</a>}
               {(['confirmee', 'payee', 'terminee', 'annulee'] as const).filter(s => s !== r.statut).map(s => (
                 <button key={s} onClick={() => statut(r, s)} className="rounded-full px-4 py-2 text-sm font-semibold text-cafe ring-1 ring-cafe/15 hover:bg-creme">{STATUTS[s].t}</button>
               ))}
@@ -238,9 +247,9 @@ function Reservations({ resto }: { resto: Restaurant }) {
   )
 }
 
-async function compresser(f: File): Promise<Blob> {
+async function compresser(f: File, max = 900): Promise<Blob> {
   const img = await createImageBitmap(f)
-  const l = Math.min(900, img.width)
+  const l = Math.min(max, img.width)
   const h = Math.round(img.height * (l / img.width))
   const c = document.createElement('canvas')
   c.width = l; c.height = h
@@ -250,7 +259,7 @@ async function compresser(f: File): Promise<Blob> {
 
 const VIDE = { nom: '', description: '', prix: '', categorie: 'Plats' }
 
-function GestionPlats({ resto, plats, recharger }: { resto: Restaurant; plats: Plat[]; recharger: () => void }) {
+function GestionPlats({ depot, plats, recharger }: { depot: Depot; plats: Plat[]; recharger: () => void }) {
   const [edition, setEdition] = useState<Plat | 'nouveau' | null>(null)
   const [f, setF] = useState(VIDE)
   const [photo, setPhoto] = useState<File | null>(null)
@@ -270,17 +279,11 @@ function GestionPlats({ resto, plats, recharger }: { resto: Restaurant; plats: P
     try {
       let photo_url = edition !== 'nouveau' && edition ? edition.photo_url : null
       if (photo) {
-        const blob = await compresser(photo)
-        const chemin = `${resto.id}/${crypto.randomUUID()}.webp`
-        const { error } = await supabase.storage.from('resto-photos').upload(chemin, blob, { contentType: 'image/webp', cacheControl: '31536000' })
-        if (error) throw error
-        photo_url = supabase.storage.from('resto-photos').getPublicUrl(chemin).data.publicUrl
+        photo_url = await depot.photo(await compresser(photo, depot.demo ? 640 : 900))
       }
       const val = { nom: f.nom.trim(), description: f.description.trim() || null, prix, categorie: f.categorie, photo_url }
-      const { error } = edition === 'nouveau'
-        ? await supabase.from('resto_plats').insert({ ...val, restaurant_id: resto.id, ordre: plats.length + 1 })
-        : await supabase.from('resto_plats').update(val).eq('id', (edition as Plat).id)
-      if (error) throw error
+      if (edition === 'nouveau') await depot.ajouterPlat({ ...val, ordre: plats.length + 1 })
+      else await depot.majPlats([(edition as Plat).id], val)
       setEdition(null); recharger()
     } catch {
       setErreur('L\'enregistrement a échoué. Vérifiez la connexion.')
@@ -289,7 +292,7 @@ function GestionPlats({ resto, plats, recharger }: { resto: Restaurant; plats: P
 
   async function supprimer(p: Plat) {
     if (!confirm(`Supprimer définitivement « ${p.nom} » ?`)) return
-    await supabase.from('resto_plats').delete().eq('id', p.id)
+    await depot.supprimerPlat(p.id)
     setEdition(null); recharger()
   }
 
